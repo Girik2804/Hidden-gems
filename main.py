@@ -274,6 +274,7 @@ def add_closest_parking_info(places_df, lat_col, lon_col):
         places_df['Closest Parking Distance (km)'] = float('inf')
         places_df['Closest Parking Rate'] = 'N/A'
         places_df['Closest Parking Hours'] = 'N/A'
+        places_df['Closest Parking Cover'] = 'Open'
         return places_df
     
     closest_parkings = []
