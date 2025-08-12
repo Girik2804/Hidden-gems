@@ -1514,9 +1514,12 @@ try:
                         if w:
                             precip_prob = w.get('precip_prob_next_3h') or 0
                             code = w.get('weather_code') or 0
-                            bad_weather = (precip_prob >= 50) or (code in {61,63,65,80,81,82,95,96,99})
+                            # Lower threshold and always show suggestions
+                            bad_weather = (precip_prob >= 30) or (code in {61,63,65,80,81,82,95,96,99})
                             if bad_weather:
                                 st.warning("☔ Recommended parking: Covered (garage/underground) due to current/expected weather.")
+                            else:
+                                st.info("☀️ Suggested parking: Open/surface is fine in sunny/clear conditions.")
                     except Exception:
                         pass
 
@@ -1788,9 +1791,12 @@ try:
                         if w:
                             precip_prob = w.get('precip_prob_next_3h') or 0
                             code = w.get('weather_code') or 0
-                            bad_weather = (precip_prob >= 50) or (code in {61,63,65,80,81,82,95,96,99})
+                            # Lower threshold and always show suggestions
+                            bad_weather = (precip_prob >= 30) or (code in {61,63,65,80,81,82,95,96,99})
                             if bad_weather:
                                 st.warning("☔ Recommended parking: Covered (garage/underground) due to current/expected weather.")
+                            else:
+                                st.info("☀️ Suggested parking: Open/surface is fine in sunny/clear conditions.")
                     except Exception:
                         pass
 
