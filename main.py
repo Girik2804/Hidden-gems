@@ -1508,6 +1508,18 @@ try:
                         }
                     )
 
+                    # Weather-aware parking recommendation under the table
+                    try:
+                        w = st.session_state.get('current_weather')
+                        if w:
+                            precip_prob = w.get('precip_prob_next_3h') or 0
+                            code = w.get('weather_code') or 0
+                            bad_weather = (precip_prob >= 50) or (code in {61,63,65,80,81,82,95,96,99})
+                            if bad_weather:
+                                st.warning("☔ Recommended parking: Covered (garage/underground) due to current/expected weather.")
+                    except Exception:
+                        pass
+
                 else:
                     if st.session_state.selected_neighborhood:
                         st.info("💡 Try selecting a different neighborhood or category combination.")
@@ -1770,6 +1782,17 @@ try:
                         }
                     )
 
+                    # Weather-aware parking recommendation under the table
+                    try:
+                        w = st.session_state.get('current_weather')
+                        if w:
+                            precip_prob = w.get('precip_prob_next_3h') or 0
+                            code = w.get('weather_code') or 0
+                            bad_weather = (precip_prob >= 50) or (code in {61,63,65,80,81,82,95,96,99})
+                            if bad_weather:
+                                st.warning("☔ Recommended parking: Covered (garage/underground) due to current/expected weather.")
+                    except Exception:
+                        pass
 
                 
                 else:
