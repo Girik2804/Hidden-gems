@@ -927,6 +927,7 @@ try:
         # ===== Weather at your location =====
         weather = get_weather_data(user_lat, user_lon)
         if weather:
+            st.session_state.current_weather = weather
             colw1, colw2, colw3 = st.columns([1, 2, 2])
             with colw1:
                 st.metric(
@@ -1220,9 +1221,9 @@ try:
                     # Weather-aware guidance (only shows if we have user location weather)
                     try:
                         if 'user_location' in st.session_state and st.session_state.user_location:
-                            w = get_weather_data(st.session_state.user_location[0], st.session_state.user_location[1])
+                            w = st.session_state.get('current_weather') or get_weather_data(st.session_state.user_location[0], st.session_state.user_location[1])
                             tip = weather_based_tip(w) if w else None
-                            if tip and tip.get('text'):
+                            if tip and tip.get('text') and w:
                                 st.info(f"{w['weather_emoji']} {w['weather_desc']} — {tip['text']}")
                     except Exception:
                         pass
@@ -1718,7 +1719,7 @@ try:
                         weather_label = ""
                         try:
                             if 'user_location' in st.session_state and st.session_state.user_location:
-                                w = get_weather_data(st.session_state.user_location[0], st.session_state.user_location[1])
+                                w = st.session_state.get('current_weather') or get_weather_data(st.session_state.user_location[0], st.session_state.user_location[1])
                                 if w:
                                     weather_label = f"{w['weather_emoji']} {w['weather_desc']}"
                         except Exception:
