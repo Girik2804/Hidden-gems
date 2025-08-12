@@ -369,6 +369,109 @@ def calculate_distance_to_places(df, user_lat, user_lon, lat_col, lon_col):
     return df
 
 
+# ===== Weather utilities (Open-Meteo) =====
+
+def _describe_weather_code(code: int):
+    """Return (description, emoji) for Open-Meteo weather_code."""
+    try:
+        code = int(code)
+    except Exception:
+        return ("Unknown", "❓")
+    if code == 0:
+        return ("Clear sky", "☀️")
+    if code in {1, 2, 3}:
+        return ("Partly cloudy", "⛅")
+    if code in {45, 48}:
+        return ("Foggy", "🌫️")
+    if code in {51, 53, 55}:
+        return ("Drizzle", "🌦️")
+    if code in {56, 57}:
+        return ("Freezing drizzle", "🌧️")
+    if code in {61, 63, 65}:
+        return ("Rain", "🌧️")
+    if code in {66, 67}:
+        return ("Freezing rain", "🌧️")
+    if code in {71, 73, 75, 77}:
+        return ("Snow", "❄️")
+    if code in {80, 81, 82}:
+        return ("Rain showers", "🌦️")
+    if code in {85, 86}:
+        return ("Snow showers", "🌨️")
+    if code in {95, 96, 99}:
+        return ("Thunderstorm", "⛈️")
+    return ("Unknown", "❓")
+
+
+def get_weather_data(latitude: float, longitude: float):
+    """Fetch current weather and short-term rain outlook from Open-Meteo (no API key required)."""
+    try:
+        url = "https://api.open-meteo.com/v1/forecast"
+        params = {
+            "latitude": latitude,
+            "longitude": longitude,
+            "current": "temperature_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m",
+            "hourly": "precipitation_probability,precipitation",
+            "timezone": "auto",
+            "forecast_days": 1,
+        }
+        resp = requests.get(url, params=params, timeout=8)
+        resp.raise_for_status()
+        payload = resp.json()
+        current = payload.get("current", {}) or {}
+        hourly = payload.get("hourly", {}) or {}
+        probs = hourly.get("precipitation_probability") or []
+        precip_series = hourly.get("precipitation") or []
+        # Next few hours outlook (max probability/precip within next 3 hours)
+        next3_prob = max(probs[:3]) if len(probs) >= 1 else None
+        next3_precip = max(precip_series[:3]) if len(precip_series) >= 1 else None
+        desc, emoji = _describe_weather_code(current.get("weather_code"))
+        return {
+            "temperature": current.get("temperature_2m"),
+            "apparent_temperature": current.get("apparent_temperature"),
+            "precipitation_now": current.get("precipitation"),
+            "wind_speed": current.get("wind_speed_10m"),
+            "weather_code": current.get("weather_code"),
+            "weather_desc": desc,
+            "weather_emoji": emoji,
+            "precip_prob_next_3h": next3_prob,
+            "precip_next_3h": next3_precip,
+        }
+    except Exception as e:
+        st.warning(f"Weather unavailable: {str(e)}")
+        return None
+
+
+def weather_based_tip(weather: dict) -> dict:
+    """Return guidance for categories and parking given weather. Keys: text, parking_tip."""
+    if not weather:
+        return {"text": "", "parking_tip": ""}
+    temp = weather.get("apparent_temperature") or weather.get("temperature")
+    precip_prob = weather.get("precip_prob_next_3h") or 0
+    code = weather.get("weather_code") or 0
+
+    # Defaults
+    suggestion_text = "Nice day for exploring Toronto. Parks and outdoor spots are great."
+    parking_tip = "Surface parking is fine."
+
+    try:
+        if precip_prob and precip_prob >= 50:
+            suggestion_text = "Rain expected soon — consider indoor gems like restaurants, libraries, or places of worship."
+            parking_tip = "Prefer covered parking (garage/underground)."
+        elif code in {61, 63, 65, 80, 81, 82, 95, 96, 99}:  # rainy/stormy
+            suggestion_text = "Wet weather — indoor gems recommended; outdoor parks may be less comfortable."
+            parking_tip = "Look for covered parking to stay dry."
+        elif temp is not None and temp >= 28:
+            suggestion_text = "Hot conditions — enjoy waterfront or shaded parks, or opt for indoor cooling."
+            parking_tip = "Choose parking close to entrance or covered if available."
+        elif temp is not None and temp <= -5:
+            suggestion_text = "Very cold — indoor attractions are more comfortable today."
+            parking_tip = "Covered parking helps reduce exposure."
+    except Exception:
+        pass
+
+    return {"text": suggestion_text, "parking_tip": parking_tip}
+
+
 def get_place_image(place_name, place_type="restaurant"):
     """Fetch image for a place using reliable image sources with fallbacks"""
     try:
@@ -821,6 +924,25 @@ try:
         user_lon = location['coords']['longitude']
         st.session_state.user_location = (user_lat, user_lon)
         
+        # ===== Weather at your location =====
+        weather = get_weather_data(user_lat, user_lon)
+        if weather:
+            st.session_state.current_weather = weather
+            colw1, colw2, colw3 = st.columns([1, 2, 2])
+            with colw1:
+                st.metric(
+                    label=f"{weather['weather_emoji']} {weather['weather_desc']}",
+                    value=f"{round(weather['temperature'],1)}°C" if isinstance(weather.get('temperature'), (int, float)) else "--",
+                    delta=None
+                )
+            with colw2:
+                tip = weather_based_tip(weather)
+                if tip.get('text'):
+                    st.info(tip['text'])
+            with colw3:
+                if tip and tip.get('parking_tip'):
+                    st.success(f"🚗 Parking: {tip['parking_tip']}")
+        
         # Filters Section
         # st.markdown("## 🎛️ Filters")
         
@@ -1096,11 +1218,21 @@ try:
                     # NO MOOD SELECTED: Show all categories as before
                     gems_df = load_all_toronto_gems()
                     
+                    # Weather-aware guidance (only shows if we have user location weather)
+                    try:
+                        if 'user_location' in st.session_state and st.session_state.user_location:
+                            w = st.session_state.get('current_weather') or get_weather_data(st.session_state.user_location[0], st.session_state.user_location[1])
+                            tip = weather_based_tip(w) if w else None
+                            if tip and tip.get('text') and w:
+                                st.info(f"{w['weather_emoji']} {w['weather_desc']} — {tip['text']}")
+                    except Exception:
+                        pass
+                    
                     if not gems_df.empty:
                         # Filter by neighborhood if selected
                         if st.session_state.selected_neighborhood and st.session_state.selected_neighborhood != "All Toronto":
                             gems_df = gems_df[gems_df['neighborhood'] == st.session_state.selected_neighborhood]
-                        
+                    
                         if not gems_df.empty:
                             st.markdown(f"### 🌟 All Toronto Gems ({len(gems_df)} total)")
                             
@@ -1470,7 +1602,7 @@ try:
                         fig.update_layout(
                             mapbox=dict(
                                 style="mapbox://styles/mapbox/streets-v11",
-                                accesstoken="pk.eyJ1IjoiemVibWFwIiwiYSI6ImNtZTBjMTI4YzAzYnMybHFrbGtmOHlsc3oifQ.f6ReOVgpgmwlN4F7ohgaiQ",
+                                accesstoken="pk.eyJ1IjoiemVibWFwIiwiYSI6ImNtZTBjMTI4YzAzYnMybHFybGtmOHlsc3oifQ.f6ReOVgpgmwlN4F7ohgaiQ",
                                 center=dict(lat=sum(place_lats)/len(place_lats), lon=sum(place_lons)/len(place_lons)),
                                 zoom=14
                             ),
@@ -1583,6 +1715,16 @@ try:
                             parking_hours = f"Day: {parking_day_max} | Night: {parking_night_max}"
                             payment_methods = row['Closest Parking Payment']
                         
+                        # Attach brief weather label for quick decision-making
+                        weather_label = ""
+                        try:
+                            if 'user_location' in st.session_state and st.session_state.user_location:
+                                w = st.session_state.get('current_weather') or get_weather_data(st.session_state.user_location[0], st.session_state.user_location[1])
+                                if w:
+                                    weather_label = f"{w['weather_emoji']} {w['weather_desc']}"
+                        except Exception:
+                            pass
+                        
                         places_data.append({
                             'Place Name': place['name'],
                             'Address': place['formatted_address'],
@@ -1590,6 +1732,7 @@ try:
                             'Closest Parking': parking_info,
                             'Parking Prices (based on hours)': parking_hours,
                             'Payment Methods': payment_methods,
+                            'Weather Now': weather_label,
                             'Navigate with Maps': f"https://www.google.com/maps/search/?api=1&query={place['lat']},{place['lon']}"  # ✅ KEEP THIS
                         })
 
