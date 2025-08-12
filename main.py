@@ -1516,10 +1516,38 @@ try:
                             code = w.get('weather_code') or 0
                             # Lower threshold and always show suggestions
                             bad_weather = (precip_prob >= 30) or (code in {61,63,65,80,81,82,95,96,99})
+
+                            # Find a suggested parking near you based on cover preference
+                            suggested = None
+                            try:
+                                pdf = load_parking_data()
+                                if not pdf.empty and 'Lat' in pdf.columns and 'Lon' in pdf.columns:
+                                    def _cover_label(t):
+                                        t = str(t).lower()
+                                        covered = any(k in t for k in ['underground','garage','structure','covered','interior','parkade'])
+                                        open_like = any(k in t for k in ['surface','lot','open','on-street','street'])
+                                        return 'Covered' if covered and not open_like else ('Open' if open_like and not covered else ('Covered' if 'underground' in t or 'garage' in t else 'Open'))
+                                    pdf = pdf.copy()
+                                    pdf['Cover'] = pdf['Carpark Type'].apply(_cover_label)
+                                    pdf['dist_km'] = pdf.apply(lambda r: haversine_distance(user_lat, user_lon, float(r['Lat']), float(r['Lon'])), axis=1)
+                                    pref = 'Covered' if bad_weather else 'Open'
+                                    filtered = pdf[pdf['Cover'] == pref]
+                                    if filtered.empty:
+                                        filtered = pdf
+                                    suggested = filtered.loc[filtered['dist_km'].idxmin()]
+                            except Exception:
+                                suggested = None
+
                             if bad_weather:
-                                st.warning("☔ Recommended parking: Covered (garage/underground) due to current/expected weather.")
+                                if suggested is not None:
+                                    st.warning(f"☔ Recommended parking: Covered. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}.")
+                                else:
+                                    st.warning("☔ Recommended parking: Covered (garage/underground) due to current/expected weather.")
                             else:
-                                st.info("☀️ Suggested parking: Open/surface is fine in sunny/clear conditions.")
+                                if suggested is not None:
+                                    st.info(f"☀️ Suggested parking: Open/surface. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}.")
+                                else:
+                                    st.info("☀️ Suggested parking: Open/surface is fine in sunny/clear conditions.")
                     except Exception:
                         pass
 
@@ -1793,10 +1821,38 @@ try:
                             code = w.get('weather_code') or 0
                             # Lower threshold and always show suggestions
                             bad_weather = (precip_prob >= 30) or (code in {61,63,65,80,81,82,95,96,99})
+
+                            # Find a suggested parking near you based on cover preference
+                            suggested = None
+                            try:
+                                pdf = load_parking_data()
+                                if not pdf.empty and 'Lat' in pdf.columns and 'Lon' in pdf.columns:
+                                    def _cover_label(t):
+                                        t = str(t).lower()
+                                        covered = any(k in t for k in ['underground','garage','structure','covered','interior','parkade'])
+                                        open_like = any(k in t for k in ['surface','lot','open','on-street','street'])
+                                        return 'Covered' if covered and not open_like else ('Open' if open_like and not covered else ('Covered' if 'underground' in t or 'garage' in t else 'Open'))
+                                    pdf = pdf.copy()
+                                    pdf['Cover'] = pdf['Carpark Type'].apply(_cover_label)
+                                    pdf['dist_km'] = pdf.apply(lambda r: haversine_distance(user_lat, user_lon, float(r['Lat']), float(r['Lon'])), axis=1)
+                                    pref = 'Covered' if bad_weather else 'Open'
+                                    filtered = pdf[pdf['Cover'] == pref]
+                                    if filtered.empty:
+                                        filtered = pdf
+                                    suggested = filtered.loc[filtered['dist_km'].idxmin()]
+                            except Exception:
+                                suggested = None
+
                             if bad_weather:
-                                st.warning("☔ Recommended parking: Covered (garage/underground) due to current/expected weather.")
+                                if suggested is not None:
+                                    st.warning(f"☔ Recommended parking: Covered. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}.")
+                                else:
+                                    st.warning("☔ Recommended parking: Covered (garage/underground) due to current/expected weather.")
                             else:
-                                st.info("☀️ Suggested parking: Open/surface is fine in sunny/clear conditions.")
+                                if suggested is not None:
+                                    st.info(f"☀️ Suggested parking: Open/surface. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}.")
+                                else:
+                                    st.info("☀️ Suggested parking: Open/surface is fine in sunny/clear conditions.")
                     except Exception:
                         pass
 
