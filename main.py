@@ -1514,8 +1514,8 @@ try:
                         if w:
                             precip_prob = w.get('precip_prob_next_3h') or 0
                             code = w.get('weather_code') or 0
-                            # Lower threshold and always show suggestions
-                            bad_weather = (precip_prob >= 30) or (code in {61,63,65,80,81,82,95,96,99})
+                            # Lower threshold and always show suggestions (includes drizzle)
+                            bad_weather = (precip_prob >= 30) or (code in {51,53,55,56,57,61,63,65,80,81,82,95,96,99})
 
                             # Find a suggested parking near you based on cover preference
                             suggested = None
@@ -1829,8 +1829,8 @@ try:
                         if w:
                             precip_prob = w.get('precip_prob_next_3h') or 0
                             code = w.get('weather_code') or 0
-                            # Lower threshold and always show suggestions
-                            bad_weather = (precip_prob >= 30) or (code in {61,63,65,80,81,82,95,96,99})
+                            # Lower threshold and always show suggestions (includes drizzle)
+                            bad_weather = (precip_prob >= 30) or (code in {51,53,55,56,57,61,63,65,80,81,82,95,96,99})
 
                             # Find a suggested parking near you based on cover preference
                             suggested = None
