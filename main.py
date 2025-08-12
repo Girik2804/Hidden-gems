@@ -1807,45 +1807,21 @@ try:
 
                     df_display = pd.DataFrame(places_data)
 
-                    # Render first 5 as cards and the rest in a dropdown
-                    top_df = df_display.head(5).copy()
-                    rest_df = df_display.iloc[5:].copy()
-
-                    for _, r in top_df.iterrows():
-                        st.markdown(f"""
-                        <div class=\"place-card\">
-                            <div style=\"font-weight:700; font-size:1.05rem; margin-bottom:4px;\">{r.get('Place Name','')}</div>
-                            <div style=\"color:#666; font-size:0.9rem; margin-bottom:6px;\">{r.get('Address','')}</div>
-                            <div style=\"font-size:0.9rem;\">Category: {r.get('Categories','')}</div>
-                            <div style=\"font-size:0.9rem; margin-top:6px;\">Closest Parking: {r.get('Closest Parking','')}</div>
-                            <div style=\"font-size:0.9rem;\">Parking Cover: {r.get('Parking Cover','')}</div>
-                            <div style=\"font-size:0.9rem;\">{r.get('Parking Prices (based on hours)','')}</div>
-                            <div style=\"font-size:0.9rem;\">Payment Methods: {r.get('Payment Methods','')}</div>
-                            <div style=\"font-size:0.9rem; margin-top:6px;\">{r.get('Weather Now','')}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        if 'Navigate with Maps' in r:
-                            st.link_button("🗺️ Navigate with Maps", url=r['Navigate with Maps'], use_container_width=True)
-
-                    if not rest_df.empty:
-                        with st.expander("More results", expanded=False):
-                            names = rest_df['Place Name'].tolist() if 'Place Name' in rest_df.columns else [f"Place #{{i+6}}" for i in range(len(rest_df))]
-                            selected_name = st.selectbox("Choose a listing:", names, key="more_results_select")
-                            sel_row = rest_df[rest_df['Place Name'] == selected_name].iloc[0] if 'Place Name' in rest_df.columns else rest_df.iloc[0]
-                            st.markdown(f"""
-                            <div class=\"place-card\">
-                                <div style=\"font-weight:700; font-size:1.05rem; margin-bottom:4px;\">{sel_row.get('Place Name','')}</div>
-                                <div style=\"color:#666; font-size:0.9rem; margin-bottom:6px;\">{sel_row.get('Address','')}</div>
-                                <div style=\"font-size:0.9rem;\">Category: {sel_row.get('Categories','')}</div>
-                                <div style=\"font-size:0.9rem; margin-top:6px;\">Closest Parking: {sel_row.get('Closest Parking','')}</div>
-                                <div style=\"font-size:0.9rem;\">Parking Cover: {sel_row.get('Parking Cover','')}</div>
-                                <div style=\"font-size:0.9rem;\">{sel_row.get('Parking Prices (based on hours)','')}</div>
-                                <div style=\"font-size:0.9rem;\">Payment Methods: {sel_row.get('Payment Methods','')}</div>
-                                <div style=\"font-size:0.9rem; margin-top:6px;\">{sel_row.get('Weather Now','')}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            if 'Navigate with Maps' in sel_row:
-                                st.link_button("🗺️ Navigate with Maps", url=sel_row['Navigate with Maps'], use_container_width=True)
+                    # ✅ KEEP THE NAVIGATION COLUMN CONFIG
+                    st.dataframe(
+                        df_display,
+                        use_container_width=True,
+                        hide_index=True,
+                        column_config={
+                            "Navigate with Maps": st.column_config.LinkColumn(
+                                "Navigate with Maps",
+                                help="Click to open in Google Maps",
+                                validate="^https://[a-z]",
+                                max_chars=100,
+                                display_text="🗺️ Navigate with Maps"
+                            )
+                        }
+                    )
 
                     # Weather-aware parking recommendation under the table
                     try:
