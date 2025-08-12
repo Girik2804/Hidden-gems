@@ -1540,14 +1540,24 @@ try:
 
                             if bad_weather:
                                 if suggested is not None:
-                                    st.warning(f"☔ Recommended parking: Covered. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}.")
+                                    _text = f"☔ Recommended parking: Covered. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}."
                                 else:
-                                    st.warning("☔ Recommended parking: Covered (garage/underground) due to current/expected weather.")
+                                    _text = "☔ Recommended parking: Covered (garage/underground) due to current/expected weather."
+                                st.markdown(f"""
+                                <div style="font-size:0.9rem; padding:8px 12px; border-radius:8px; background:#fff3cd; color:#664d03; border:1px solid #ffe69c;">
+                                    {_text}
+                                </div>
+                                """, unsafe_allow_html=True)
                             else:
                                 if suggested is not None:
-                                    st.info(f"☀️ Suggested parking: Open/surface. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}.")
+                                    _text = f"☀️ Suggested parking: Open/surface. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}."
                                 else:
-                                    st.info("☀️ Suggested parking: Open/surface is fine in sunny/clear conditions.")
+                                    _text = "☀️ Suggested parking: Open/surface is fine in sunny/clear conditions."
+                                st.markdown(f"""
+                                <div style="font-size:0.9rem; padding:8px 12px; border-radius:8px; background:#e7f1ff; color:#084298; border:1px solid #b6d4fe;">
+                                    {_text}
+                                </div>
+                                """, unsafe_allow_html=True)
                     except Exception:
                         pass
 
@@ -1845,14 +1855,24 @@ try:
 
                             if bad_weather:
                                 if suggested is not None:
-                                    st.warning(f"☔ Recommended parking: Covered. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}.")
+                                    _text = f"☔ Recommended parking: Covered. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}."
                                 else:
-                                    st.warning("☔ Recommended parking: Covered (garage/underground) due to current/expected weather.")
+                                    _text = "☔ Recommended parking: Covered (garage/underground) due to current/expected weather."
+                                st.markdown(f"""
+                                <div style="font-size:0.9rem; padding:8px 12px; border-radius:8px; background:#fff3cd; color:#664d03; border:1px solid #ffe69c;">
+                                    {_text}
+                                </div>
+                                """, unsafe_allow_html=True)
                             else:
                                 if suggested is not None:
-                                    st.info(f"☀️ Suggested parking: Open/surface. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}.")
+                                    _text = f"☀️ Suggested parking: Open/surface. Suggested: {suggested['Park Name']} — {suggested['Cover']}, {suggested['dist_km']:.2f} km, ${suggested['Rate per 30min']}/30min; Day {suggested['Day Maximum']}, Night {suggested['Night Maximum']}."
                                 else:
-                                    st.info("☀️ Suggested parking: Open/surface is fine in sunny/clear conditions.")
+                                    _text = "☀️ Suggested parking: Open/surface is fine in sunny/clear conditions."
+                                st.markdown(f"""
+                                <div style="font-size:0.9rem; padding:8px 12px; border-radius:8px; background:#e7f1ff; color:#084298; border:1px solid #b6d4fe;">
+                                    {_text}
+                                </div>
+                                """, unsafe_allow_html=True)
                     except Exception:
                         pass
 
