@@ -293,6 +293,15 @@ def add_closest_parking_info(places_df, lat_col, lon_col):
             closest_idx = distances.idxmin()
             closest_parking = parking_df.loc[closest_idx]
             
+            # Determine parking cover
+            try:
+                _t = str(closest_parking['Carpark Type']).lower()
+                covered = any(k in _t for k in ['underground','garage','structure','covered','interior','parkade'])
+                open_like = any(k in _t for k in ['surface','lot','open','on-street','street'])
+                cover_label = 'Covered' if covered and not open_like else ('Open' if open_like and not covered else ('Covered' if 'underground' in _t or 'garage' in _t else 'Open'))
+            except Exception:
+                cover_label = 'Open'
+            
             closest_parkings.append({
                 'Closest Parking Name': closest_parking['Park Name'],
                 'Closest Parking Spaces': closest_parking['Parking Spaces'],
@@ -301,6 +310,7 @@ def add_closest_parking_info(places_df, lat_col, lon_col):
                 'Closest Parking Access': closest_parking['Access'],
                 'Closest Parking Rate': f"${closest_parking['Rate per 30min']}/30min",
                 'Closest Parking Type': closest_parking['Carpark Type'],
+                'Closest Parking Cover': cover_label,
                 'Closest Parking Day Max': closest_parking['Day Maximum'],
                 'Closest Parking Night Max': closest_parking['Night Maximum'],
                 'Closest Parking Payment': closest_parking['Payment Methods']
@@ -316,6 +326,7 @@ def add_closest_parking_info(places_df, lat_col, lon_col):
                 'Closest Parking Access': 'Unknown',
                 'Closest Parking Rate': 'N/A',
                 'Closest Parking Type': 'N/A',
+                'Closest Parking Cover': 'Open',
                 'Closest Parking Day Max': 'N/A',
                 'Closest Parking Night Max': 'N/A',
                 'Closest Parking Payment': 'N/A'
@@ -1174,6 +1185,7 @@ try:
                                         lambda row: f"{row['Closest Parking Name']} ({row['Closest Parking Spaces']} spaces, {row['Closest Parking Distance (km)']}km, {row['Closest Parking Rate']})", 
                                         axis=1
                                     )
+                                    display_df['Parking Cover'] = filtered_data['Closest Parking Cover']
                                     display_df['Parking Prices(based on hours)'] = filtered_data.apply(
                                         lambda row: f"Day: {row['Closest Parking Day Max']} | Night: {row['Closest Parking Night Max']}", 
                                         axis=1
@@ -1327,6 +1339,7 @@ try:
                                                 lambda row: f"{row['Closest Parking Name']} ({row['Closest Parking Spaces']} spaces, {row['Closest Parking Distance (km)']}km, {row['Closest Parking Rate']})", 
                                                 axis=1
                                             )
+                                            display_df['Parking Cover'] = gems_df['Closest Parking Cover']
                                     except Exception as e:
                                         st.warning(f"Could not add parking info: {str(e)}")
                                     
@@ -1466,6 +1479,7 @@ try:
                             lambda row: f"{row['Closest Parking Name']} ({row['Closest Parking Spaces']} spaces, {row['Closest Parking Distance (km)']}km, {row['Closest Parking Rate']})", 
                             axis=1
                         )
+                        df_display['Parking Cover'] = display_gems['Closest Parking Cover']
                         df_display['Parking Prices(based on hours)'] = display_gems.apply(
                             lambda row: f"Day: {row['Closest Parking Day Max']} | Night: {row['Closest Parking Night Max']}", 
                             axis=1
@@ -1730,6 +1744,7 @@ try:
                             'Address': place['formatted_address'],
                             'Categories': ', '.join([cat.replace("_", " ").title() for cat in place['categories'][:2]]),
                             'Closest Parking': parking_info,
+                            'Parking Cover': row['Closest Parking Cover'] if not live_places_df.empty and idx < len(live_places_df) and 'Closest Parking Cover' in row else '',
                             'Parking Prices (based on hours)': parking_hours,
                             'Payment Methods': payment_methods,
                             'Weather Now': weather_label,
