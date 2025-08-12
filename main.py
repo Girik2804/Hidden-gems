@@ -1233,22 +1233,6 @@ try:
                                         if 'Navigate with Maps' in sel_row:
                                             st.link_button("🗺️ Navigate with Maps", url=sel_row['Navigate with Maps'], use_container_width=True)
 
-                                if not rest_df.empty:
-                                    with st.expander("More results", expanded=False):
-                                        names = rest_df['Name'].tolist() if 'Name' in rest_df.columns else [f"Place #{{i+6}}" for i in range(len(rest_df))]
-                                        selected_name = st.selectbox("Choose a listing:", names, key="more_results_select_all_gems_convert")
-                                        sel_row = rest_df[rest_df['Name'] == selected_name].iloc[0] if 'Name' in rest_df.columns else rest_df.iloc[0]
-                                        st.markdown(f"""
-                                        <div class=\"place-card\">
-                                            <div style=\"font-weight:700; font-size:1.05rem; margin-bottom:4px;\">{sel_row.get('Name','')}</div>
-                                            {f"<div style=\\\"font-size:0.9rem;\\\">Category: {sel_row.get('Category','')}</div>" if 'Category' in sel_row else ''}
-                                            {f"<div style=\\\"font-size:0.9rem; margin-top:6px;\\\">Closest Parking: {sel_row.get('Closest Parking','')}</div>" if 'Closest Parking' in sel_row else ''}
-                                            {f"<div style=\\\"font-size:0.9rem;\\\">Parking Cover: {sel_row.get('Parking Cover','')}</div>" if 'Parking Cover' in sel_row else ''}
-                                        </div>
-                                        """, unsafe_allow_html=True)
-                                        if 'Navigate with Maps' in sel_row:
-                                            st.link_button("🗺️ Navigate with Maps", url=sel_row['Navigate with Maps'], use_container_width=True)
-
 
                             else:
                                 # Fallback: show available columns for debugging
