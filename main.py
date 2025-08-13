@@ -1937,13 +1937,38 @@ with pf_col2:
 	it_attraction_type = st.selectbox("Attraction Type", ["Any", "Parks", "Libraries"])
 
 build_btn = st.button("Build Itinerary")
+new_btn = st.button("New options")
 
-if build_btn:
+if build_btn or new_btn:
 	try:
 		# Determine origin: user location if available; else Toronto downtown
 		origin_lat, origin_lon = 43.6532, -79.3832
 		if 'user_location' in st.session_state and st.session_state.user_location:
 			origin_lat, origin_lon = st.session_state.user_location
+
+		# Persist and reuse filters for new options
+		if 'itinerary_filters' not in st.session_state:
+			st.session_state.itinerary_filters = None
+		if 'itinerary_iter' not in st.session_state:
+			st.session_state.itinerary_iter = 0
+		if build_btn or not st.session_state.itinerary_filters:
+			st.session_state.itinerary_filters = {
+				'mood': it_mood,
+				'time': it_time,
+				'radius_km': it_radius_km,
+				'neighborhood': it_neighborhood,
+				'attraction_type': it_attraction_type,
+			}
+			offset = 0
+			st.session_state.itinerary_iter = 0
+		else:
+			offset = st.session_state.itinerary_iter
+			# Overwrite local vars with persisted filters to keep same settings
+			it_mood = st.session_state.itinerary_filters['mood']
+			it_time = st.session_state.itinerary_filters['time']
+			it_radius_km = st.session_state.itinerary_filters['radius_km']
+			it_neighborhood = st.session_state.itinerary_filters['neighborhood']
+			it_attraction_type = st.session_state.itinerary_filters['attraction_type']
 
 		# Weather-aware hints and decisions
 		weather = None
@@ -1980,17 +2005,16 @@ if build_btn:
 		)
 		# Sort: higher score first, then closer
 		if 'score' in dine_df.columns:
-			dine_df = dine_df.sort_values(by=['score', 'distance_km'], ascending=[False, True])
+			df_sel = dine_df.sort_values(by=['score', 'distance_km'], ascending=[False, True])
 		else:
-			dine_df = dine_df.sort_values(by=['distance_km'], ascending=[True])
+			df_sel = dine_df.sort_values(by=['distance_km'], ascending=[True])
 
 		eat_choice = None
-		if not dine_df.empty:
-			# If mood is Hungry or Romantic, bias closer; else prefer highest score
-			if it_mood in ("Hungry", "Romantic") and 'distance_km' in dine_df.columns:
-				eat_choice = dine_df.sort_values(by=['distance_km','score'], ascending=[True, False]).iloc[0]
-			else:
-				eat_choice = dine_df.iloc[0]
+		if not df_sel.empty:
+			# If mood is Hungry or Romantic, bias closer; else prefer highest score; then rotate by offset
+			if it_mood in ("Hungry", "Romantic") and 'distance_km' in df_sel.columns and 'score' in df_sel.columns:
+				df_sel = df_sel.sort_values(by=['distance_km','score'], ascending=[True, False])
+			eat_choice = df_sel.iloc[offset % len(df_sel)]
 
 		# Prepare parking suggestion near the chosen restaurant with weather preference
 		parking_info = None
@@ -2017,15 +2041,16 @@ if build_btn:
 						cands = pdf[pdf['Cover'] == 'Open']
 						if cands.empty:
 							cands = pdf
-					suggested = cands.sort_values('dist_km', ascending=True).iloc[0].to_dict() if not pdf.empty else None
-					if suggested:
+					suggested = cands.sort_values('dist_km', ascending=True)
+					if not suggested.empty:
+						row = suggested.iloc[offset % len(suggested)].to_dict()
 						parking_info = {
-							'Closest Parking Name': suggested.get('Park Name'),
-							'Closest Parking Distance (km)': suggested.get('dist_km'),
-							'Closest Parking Rate': f"${suggested.get('Rate per 30min')}/30min",
-							'Closest Parking Cover': suggested.get('Cover'),
-							'Closest Parking Day Max': suggested.get('Day Maximum'),
-							'Closest Parking Night Max': suggested.get('Night Maximum')
+							'Closest Parking Name': row.get('Park Name'),
+							'Closest Parking Distance (km)': row.get('dist_km'),
+							'Closest Parking Rate': f"${row.get('Rate per 30min')}/30min",
+							'Closest Parking Cover': row.get('Cover'),
+							'Closest Parking Day Max': row.get('Day Maximum'),
+							'Closest Parking Night Max': row.get('Night Maximum')
 						}
 			except Exception:
 				parking_info = None
@@ -2049,13 +2074,19 @@ if build_btn:
 					edu_df = edu_df[edu_df['area'] == area_code]
 				edu_df['distance_km'] = edu_df.apply(lambda r: haversine_distance(base_lat, base_lon, float(r['Lat']), float(r['Long'])), axis=1)
 				edu_df = edu_df.sort_values(by=['distance_km'], ascending=[True])
-				attractions = [{
-					'ASSET_NAME': r.get('BranchName', 'Library'),
-					'score': r.get('score'),
-					'distance_km': r.get('distance_km'),
-					'Latitude': r.get('Lat'),
-					'Longitude': r.get('Long')
-				} for _, r in edu_df.head(2).iterrows()]
+				rows = list(edu_df.itertuples(index=False))
+				for i in range(2):
+					if len(rows) == 0:
+						break
+					j = (offset + i) % len(rows)
+					r = rows[j]
+					attractions.append({
+						'ASSET_NAME': getattr(r, 'BranchName') if hasattr(r, 'BranchName') else 'Library',
+						'score': getattr(r, 'score') if hasattr(r, 'score') else None,
+						'distance_km': getattr(r, 'distance_km') if hasattr(r, 'distance_km') else None,
+						'Latitude': getattr(r, 'Lat'),
+						'Longitude': getattr(r, 'Long')
+					})
 			else:
 				parks_path = f"{destination_info['parks']['folder']}/{destination_info['parks']['file']}"
 				parks_df = pd.read_csv(parks_path)
@@ -2067,9 +2098,25 @@ if build_btn:
 					parks_df = parks_df[parks_df['area'] == area_code]
 				parks_df['distance_km'] = parks_df.apply(lambda r: haversine_distance(base_lat, base_lon, float(r['Latitude']), float(r['Longitude'])), axis=1)
 				parks_df = parks_df.sort_values(by=['distance_km'], ascending=[True])
-				attractions = parks_df.head(2).to_dict(orient='records')
+				rows = list(parks_df.itertuples(index=False))
+				for i in range(2):
+					if len(rows) == 0:
+						break
+					j = (offset + i) % len(rows)
+					r = rows[j]
+					attractions.append({
+						'ASSET_NAME': getattr(r, 'ASSET_NAME') if hasattr(r, 'ASSET_NAME') else 'Attraction',
+						'score': getattr(r, 'score') if hasattr(r, 'score') else None,
+						'distance_km': getattr(r, 'distance_km') if hasattr(r, 'distance_km') else None,
+						'Latitude': getattr(r, 'Latitude'),
+						'Longitude': getattr(r, 'Longitude')
+					})
 		except Exception:
 			attractions = []
+
+		# Increment iterator when generating new options
+		if new_btn:
+			st.session_state.itinerary_iter = st.session_state.itinerary_iter + 1
 
 		# Render results
 		st.markdown("### Your Itinerary")
