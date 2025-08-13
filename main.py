@@ -987,9 +987,18 @@ if search_btn and search_query:
 					'Score': results['score'].round(2) if 'score' in results.columns else None,
 					'Distance (km)': results['Distance (km)'].round(2) if 'Distance (km)' in results.columns else None,
 					'Closest Parking': results['Closest Parking'],
-					'Navigate with Maps hyperlink': results.apply(lambda r: f"https://www.google.com/maps/search/?api=1&query={r['latitude']},{r['longitude']}", axis=1)
+					'Navigate': results.apply(lambda r: f"https://www.google.com/maps/search/?api=1&query={r['latitude']},{r['longitude']}", axis=1)
 				})
-				st.dataframe(display, use_container_width=True)
+				st.dataframe(
+					display,
+					column_config={
+						"Navigate": st.column_config.LinkColumn(
+							"Navigate",
+							display_text="Navigate with Maps"
+						)
+					},
+					use_container_width=True
+				)
 			else:
 				st.info("No matches found.")
 		else:
