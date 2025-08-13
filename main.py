@@ -2015,6 +2015,40 @@ with pf_col1:
 with pf_col2:
 	it_attraction_type = st.selectbox("Attraction Type", ["Any", "Parks", "Libraries"])
 
+# Parking-based planning controls
+pp_col1, pp_col2 = st.columns([1, 1])
+with pp_col1:
+	plan_from_parking = st.checkbox("Plan from parking", value=False)
+with pp_col2:
+	parking_source = st.selectbox("Parking source", ["Nearest to me", "Choose parking"], index=0)
+
+selected_parking_label = None
+if plan_from_parking and parking_source == "Choose parking":
+	try:
+		pdf_ui = load_parking_data()
+		if not pdf_ui.empty and 'user_location' in st.session_state and st.session_state.user_location:
+			u_lat, u_lon = st.session_state.user_location
+			def _cover_label(t):
+				_t = str(t).lower()
+				if any(k in _t for k in ["underground","garage","structure","covered","indoor"]):
+					return "Covered"
+				if any(k in _t for k in ["surface","lot","open","outdoor"]):
+					return "Open"
+				return "Open"
+			pdf_ui['Cover'] = pdf_ui['Carpark Type'].apply(_cover_label)
+			pdf_ui['dist_km'] = pdf_ui.apply(lambda r: haversine_distance(u_lat, u_lon, float(r['Lat']), float(r['Lon'])), axis=1)
+			pdf_ui = pdf_ui.sort_values('dist_km').head(20)
+			labels = [f"{row['Park Name']} — {row['Cover']} — {row['dist_km']:.2f} km — ${row['Rate per 30min']}/30min" for _, row in pdf_ui.iterrows()]
+			indices = list(pdf_ui.index)
+			# Use index into labels so we can map back to original index
+			opt = st.selectbox("Select parking", options=list(range(len(labels))), format_func=lambda i: labels[i])
+			st.session_state.itinerary_parking_sel_idx = indices[opt]
+			selected_parking_label = labels[opt]
+		else:
+			st.info("Enable location to choose nearby parking.")
+	except Exception:
+		pass
+
 build_btn = st.button("Build Itinerary")
 new_btn = st.button("New options")
 
@@ -2030,6 +2064,8 @@ if build_btn or new_btn:
 			st.session_state.itinerary_filters = None
 		if 'itinerary_iter' not in st.session_state:
 			st.session_state.itinerary_iter = 0
+		if 'itinerary_base_parking' not in st.session_state:
+			st.session_state.itinerary_base_parking = None
 		if build_btn or not st.session_state.itinerary_filters:
 			st.session_state.itinerary_filters = {
 				'mood': it_mood,
@@ -2037,6 +2073,8 @@ if build_btn or new_btn:
 				'radius_km': it_radius_km,
 				'neighborhood': it_neighborhood,
 				'attraction_type': it_attraction_type,
+				'plan_from_parking': bool(plan_from_parking),
+				'parking_source': parking_source,
 			}
 			offset = 0
 			st.session_state.itinerary_iter = 0
@@ -2048,6 +2086,8 @@ if build_btn or new_btn:
 			it_radius_km = st.session_state.itinerary_filters['radius_km']
 			it_neighborhood = st.session_state.itinerary_filters['neighborhood']
 			it_attraction_type = st.session_state.itinerary_filters['attraction_type']
+			plan_from_parking = st.session_state.itinerary_filters.get('plan_from_parking', False)
+			parking_source = st.session_state.itinerary_filters.get('parking_source', "Nearest to me")
 
 		# Weather-aware hints and decisions
 		weather = None
@@ -2068,6 +2108,25 @@ if build_btn or new_btn:
 			if wt.get('text'):
 				st.info(f"{wt['text']}")
 
+		# If planning from parking, choose base lat/lon from nearest or selected parking
+		base_from_parking = None
+		if plan_from_parking:
+			try:
+				pdf_base = load_parking_data()
+				if not pdf_base.empty:
+					if parking_source == "Choose parking" and 'itinerary_parking_sel_idx' in st.session_state:
+						row = pdf_base.loc[st.session_state.itinerary_parking_sel_idx]
+						base_from_parking = (float(row['Lat']), float(row['Lon']))
+					else:
+						# Nearest to me
+						if 'user_location' in st.session_state and st.session_state.user_location:
+							u_lat, u_lon = st.session_state.user_location
+							pdf_base['__dist_km'] = pdf_base.apply(lambda r: haversine_distance(u_lat, u_lon, float(r['Lat']), float(r['Lon'])), axis=1)
+							row = pdf_base.sort_values('__dist_km').iloc[0]
+							base_from_parking = (float(row['Lat']), float(row['Lon']))
+			except Exception:
+				base_from_parking = None
+
 		# Load dine data
 		dine_path = f"{destination_info['dine']['folder']}/{destination_info['dine']['file']}"
 		dine_df = pd.read_csv(dine_path)
@@ -2078,9 +2137,14 @@ if build_btn or new_btn:
 		if it_neighborhood != "Any" and 'area' in dine_df.columns:
 			area_code = placeDict[it_neighborhood].lower()
 			dine_df = dine_df[dine_df['area'] == area_code]
-		# Compute distance
+		# Compute distance from either parking base or origin
+		if base_from_parking is not None:
+			b_lat, b_lon = base_from_parking
+			apply_base = (b_lat, b_lon)
+		else:
+			apply_base = (origin_lat, origin_lon)
 		dine_df['distance_km'] = dine_df.apply(
-			lambda r: haversine_distance(origin_lat, origin_lon, float(r['Latitude']), float(r['Longitude'])), axis=1
+			lambda r: haversine_distance(apply_base[0], apply_base[1], float(r['Latitude']), float(r['Longitude'])), axis=1
 		)
 		# Sort: higher score first, then closer
 		if 'score' in dine_df.columns:
@@ -2110,7 +2174,11 @@ if build_btn or new_btn:
 							return "Open"
 						return "Open"
 					pdf['Cover'] = pdf['Carpark Type'].apply(_cover_label)
-					base_lat, base_lon = float(eat_choice['Latitude']), float(eat_choice['Longitude'])
+					# If planning from parking, keep the base as parking for parking suggestion; else base near restaurant
+					if base_from_parking is not None:
+						base_lat, base_lon = base_from_parking
+					else:
+						base_lat, base_lon = float(eat_choice['Latitude']), float(eat_choice['Longitude'])
 					pdf['dist_km'] = pdf.apply(lambda r: haversine_distance(base_lat, base_lon, float(r['Lat']), float(r['Lon'])), axis=1)
 					if bad_weather:
 						cands = pdf[pdf['Cover'] == 'Covered']
@@ -2137,7 +2205,13 @@ if build_btn or new_btn:
 		# Nearby attractions: parks or libraries depending on filter and weather
 		attractions = []
 		try:
-			base_lat, base_lon = (float(eat_choice['Latitude']), float(eat_choice['Longitude'])) if eat_choice is not None else (origin_lat, origin_lon)
+			# Base attractions from same base as dine distance computation
+			if base_from_parking is not None:
+				base_lat, base_lon = base_from_parking
+			elif eat_choice is not None:
+				base_lat, base_lon = (float(eat_choice['Latitude']), float(eat_choice['Longitude']))
+			else:
+				base_lat, base_lon = (origin_lat, origin_lon)
 			# Decide dataset
 			preferred = it_attraction_type
 			if preferred == "Any":
