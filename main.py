@@ -1736,9 +1736,41 @@ try:
                             showlegend=False
                         )
                         
-                        st.plotly_chart(fig, use_container_width=True)
-                                        
-                    # Display places table with navigation links
+                                                st.plotly_chart(fig, use_container_width=True)
+
+                        # Proximity prototype: toggle and small right-aligned button
+                        prot_col1, prot_col2 = st.columns([5, 1])
+                        with prot_col1:
+                            nearby_strict = st.toggle("Only within 0.2 km", value=True, key="proximity_strict_toggle")
+                        with prot_col2:
+                            if st.button("Proximity", key="proximity_btn"):
+                                try:
+                                    # Build a DataFrame of places (lat, lon, name)
+                                    tmp_df = pd.DataFrame([
+                                        {
+                                            'lat': p['lat'],
+                                            'lon': p['lon'],
+                                            'name': p.get('name', 'Place')
+                                        } for p in places
+                                    ])
+                                    if not tmp_df.empty:
+                                        # Compute distances
+                                        tmp_df = calculate_distance_to_places(tmp_df, user_lat, user_lon, 'lat', 'lon')
+                                        # Optionally filter within 0.2 km
+                                        if nearby_strict:
+                                            tmp_df = tmp_df[tmp_df['distance_km'] <= 0.2]
+                                        # Sort and prepare message
+                                        tmp_df = tmp_df.sort_values('distance_km').head(5)
+                                        if tmp_df.empty:
+                                            st.toast("No nearby gems found with current filter.")
+                                        else:
+                                            items = ", ".join([f"{row['name']} ({row['distance_km']:.2f} km)" for _, row in tmp_df.iterrows()])
+                                            st.toast(f"Nearby gems: {items}", icon="📍")
+                                            st.balloons()
+                                except Exception:
+                                    st.toast("Could not compute proximity.")
+                        
+                        # Display places table with navigation links
                     if st.session_state.selected_mood:
                         st.markdown(f"## 🔥 Top Places for {st.session_state.selected_mood} Mood")
                     else:
