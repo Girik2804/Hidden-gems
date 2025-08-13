@@ -927,6 +927,41 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# 🔎 Global Search
+st.markdown("### 🔎 Search")
+s_col1, s_col2 = st.columns([3, 1])
+with s_col1:
+	search_query = st.text_input("Search by name", key="global_search_query", placeholder="e.g., Trinity Bellwoods, Sushi, Library...", label_visibility="collapsed")
+with s_col2:
+	search_btn = st.button("Search", key="global_search_button")
+
+if search_btn and search_query:
+	try:
+		all_df = load_all_toronto_gems()
+		if all_df is not None and not all_df.empty:
+			mask = all_df['name'].astype(str).str.contains(search_query.strip(), case=False, na=False)
+			results = all_df[mask].copy()
+			if not results.empty:
+				# Add distance if user location is known
+				if 'user_location' in st.session_state and st.session_state.user_location:
+					u_lat, u_lon = st.session_state.user_location
+					results['Distance (km)'] = results.apply(lambda r: haversine_distance(u_lat, u_lon, float(r['latitude']), float(r['longitude'])), axis=1)
+					results = results.sort_values('Distance (km)')
+				# Build display dataframe
+				display = pd.DataFrame({
+					'Name': results['name'],
+					'Category': results['category'].astype(str).str.capitalize(),
+					'Distance (km)': results['Distance (km)'].round(2) if 'Distance (km)' in results.columns else None,
+					'Map': results.apply(lambda r: f"https://www.google.com/maps/search/?api=1&query={r['latitude']},{r['longitude']}", axis=1)
+				})
+				st.dataframe(display, use_container_width=True)
+			else:
+				st.info("No matches found.")
+		else:
+			st.info("No data available to search.")
+	except Exception as e:
+		st.warning(f"Search failed: {str(e)}")
+
 # Get user's live location
 try:
     location = get_geolocation()
