@@ -691,8 +691,19 @@ def load_all_toronto_gems():
             df_standardized['category'] = category
             df_standardized['color'] = category_colors[category]
             
-            # Keep only the columns we need for the map
-            df_final = df_standardized[['latitude', 'longitude', 'name', 'category', 'color']].copy()
+            # Optionally preserve area and score if present
+            if 'area' in df.columns:
+                df_standardized['area'] = df['area']
+            if config['score_col'] and config['score_col'] in df.columns:
+                df_standardized['score'] = df[config['score_col']]
+            
+            # Keep only the columns we need for the map/search
+            base_cols = ['latitude', 'longitude', 'name', 'category', 'color']
+            if 'area' in df_standardized.columns:
+                base_cols.append('area')
+            if 'score' in df_standardized.columns:
+                base_cols.append('score')
+            df_final = df_standardized[base_cols].copy()
             
             all_gems.append(df_final)
             
@@ -943,16 +954,40 @@ if search_btn and search_query:
 			results = all_df[mask].copy()
 			if not results.empty:
 				# Add distance if user location is known
+				dist_series = None
 				if 'user_location' in st.session_state and st.session_state.user_location:
 					u_lat, u_lon = st.session_state.user_location
-					results['Distance (km)'] = results.apply(lambda r: haversine_distance(u_lat, u_lon, float(r['latitude']), float(r['longitude'])), axis=1)
+					dist_series = results.apply(lambda r: haversine_distance(u_lat, u_lon, float(r['latitude']), float(r['longitude'])), axis=1)
+					results['Distance (km)'] = dist_series
 					results = results.sort_values('Distance (km)')
+				# Closest parking for each result (best-effort; compute for top 25 to keep it fast)
+				try:
+					parking_df = load_parking_data()
+					def summarize_parking(row):
+						try:
+							if parking_df is None or parking_df.empty:
+								return "N/A"
+							lat, lon = float(row['latitude']), float(row['longitude'])
+							parking_df['__dist_km'] = parking_df.apply(lambda p: haversine_distance(lat, lon, float(p['Lat']), float(p['Lon'])), axis=1)
+							p = parking_df.sort_values('__dist_km').iloc[0]
+							# cover label
+							pt = str(p.get('Carpark Type','')).lower()
+							cover = 'Covered' if any(k in pt for k in ['underground','garage','structure','covered','indoor']) else ('Open' if any(k in pt for k in ['surface','lot','open','outdoor']) else 'Open')
+							return f"{p.get('Park Name','Lot')} ({cover}, {p.get('Rate per 30min','$?')}/30min, {p['__dist_km']:.2f} km)"
+						except Exception:
+							return "N/A"
+					results['Closest Parking'] = results.head(25).apply(summarize_parking, axis=1).reindex(results.index).fillna("")
+				except Exception:
+					results['Closest Parking'] = ""
 				# Build display dataframe
 				display = pd.DataFrame({
 					'Name': results['name'],
+					'Area': results['area'].astype(str).str.title() if 'area' in results.columns else "",
 					'Category': results['category'].astype(str).str.capitalize(),
+					'Score': results['score'].round(2) if 'score' in results.columns else None,
 					'Distance (km)': results['Distance (km)'].round(2) if 'Distance (km)' in results.columns else None,
-					'Map': results.apply(lambda r: f"https://www.google.com/maps/search/?api=1&query={r['latitude']},{r['longitude']}", axis=1)
+					'Closest Parking': results['Closest Parking'],
+					'Navigate': results.apply(lambda r: f"https://www.google.com/maps/search/?api=1&query={r['latitude']},{r['longitude']}", axis=1)
 				})
 				st.dataframe(display, use_container_width=True)
 			else:
