@@ -1402,6 +1402,9 @@ try:
                             if 'category' in available_columns:
                                 display_columns.append('category')
                                 column_mapping['category'] = 'Category'
+                            if 'score' in available_columns:
+                                display_columns.append('score')
+                                column_mapping['score'] = 'Score'
 
                             if display_columns:
                                 display_df = gems_df[display_columns].copy()
