@@ -184,8 +184,6 @@ if 'show_toronto_map' not in st.session_state:
     st.session_state.show_toronto_map = False
 if 'selected_category' not in st.session_state:
     st.session_state.selected_category = 'all'  # Default to show all
-if 'show_density' not in st.session_state:
-    st.session_state.show_density = False
 # if 'selected_category' not in st.session_state:
 #     st.session_state.selected_category = "parks"
     
@@ -862,18 +860,6 @@ def load_and_display_gems(neighborhood=None, destination_type=None, user_lat=Non
         
         fig = go.Figure()
 
-        if st.session_state.get('show_density'):
-            density_values = filtered_df[score_col] if (score_col and score_col in filtered_df.columns) else None
-            fig.add_trace(go.Densitymapbox(
-                lat=filtered_df[lat_col],
-                lon=filtered_df[lon_col],
-                z=(density_values if density_values is not None else [1]*len(filtered_df)),
-                radius=30,
-                colorscale="YlOrRd",
-                opacity=0.45,
-                name="Place density",
-                showscale=False
-            ))
 
         fig.add_trace(go.Scattermapbox(
             lat=filtered_df[lat_col],
@@ -1053,7 +1039,7 @@ try:
         # st.markdown("## 🎛️ Filters")
         
         # Add toggle for map mode
-        col_toggle1, col_toggle2, col_toggle3 = st.columns([1, 1, 1])
+        col_toggle1, col_toggle2 = st.columns([1, 1])
         with col_toggle2:
             # st.text("🔄 Toggle Map Mode")
             map_mode = st.toggle(
@@ -1062,20 +1048,12 @@ try:
                 key="map_mode_toggle",
                 help="Toggle between live places near you vs. curated hidden gems across Toronto"
             )
-        with col_toggle3:
-            density_mode = st.toggle(
-                "🌡️ Density overlay (beta)",
-                value=st.session_state.show_density,
-                key="density_mode_toggle",
-                help="Overlay heatmap of place density"
-            )
             
         st.markdown("<hr style='border: none; border-top;'>", unsafe_allow_html=True)
 
 
         # Handle toggle state
         st.session_state.show_toronto_map = map_mode
-        st.session_state.show_density = density_mode
 
         # Update use_predefined based on toggle OR mood selection
         # Update use_predefined based on ONLY toggle (not mood)
@@ -1377,57 +1355,25 @@ try:
 
                             fig = go.Figure(data=traces)
 
-                            if st.session_state.get('show_density'):
-                                fig.add_trace(go.Densitymapbox(
-                                    lat=gems_df['latitude'],
-                                    lon=gems_df['longitude'],
-                                    z=[1]*len(gems_df),
-                                    radius=30,
-                                    colorscale="YlOrRd",
-                                    opacity=0.45,
-                                    name="Place density",
-                                    showscale=False
-                                ))
-                                fig.update_layout(
-                                    mapbox=dict(
-                                        style="mapbox://styles/mapbox/streets-v11",
-                                        accesstoken="pk.eyJ1IjoiemVibWFwIiwiYSI6ImNtZTBjMTI4YzAzYnMybHFybGtmOHlsc3oifQ.f6ReOVgpgmwlN4F7ohgaiQ",
-                                        zoom=11,
-                                        center=dict(
-                                            lat=gems_df['latitude'].mean(),
-                                            lon=gems_df['longitude'].mean()
-                                        )
-                                    ),
-                                    height=600,
-                                    margin=dict(r=0, t=0, l=0, b=0),
-                                    legend=dict(
-                                        title="Categories",
-                                        yanchor="top",
-                                        y=0.99,
-                                        xanchor="left",
-                                        x=0.01
+                            fig.update_layout(
+                                mapbox=dict(
+                                    style="open-street-map",
+                                    zoom=11,
+                                    center=dict(
+                                        lat=gems_df['latitude'].mean(),
+                                        lon=gems_df['longitude'].mean()
                                     )
+                                ),
+                                height=600,
+                                margin=dict(r=0, t=0, l=0, b=0),
+                                legend=dict(
+                                    title="Categories",
+                                    yanchor="top",
+                                    y=0.99,
+                                    xanchor="left",
+                                    x=0.01
                                 )
-                            else:
-                                fig.update_layout(
-                                    mapbox=dict(
-                                        style="open-street-map",
-                                        zoom=11,
-                                        center=dict(
-                                            lat=gems_df['latitude'].mean(),
-                                            lon=gems_df['longitude'].mean()
-                                        )
-                                    ),
-                                    height=600,
-                                    margin=dict(r=0, t=0, l=0, b=0),
-                                    legend=dict(
-                                        title="Categories",
-                                        yanchor="top",
-                                        y=0.99,
-                                        xanchor="left",
-                                        x=0.01
-                                    )
-                                )
+                            )
                             
                             st.plotly_chart(fig, use_container_width=True)
                             
@@ -1780,17 +1726,6 @@ try:
                         # Create figure with custom symbols support
                         fig = go.Figure()
 
-                        if st.session_state.get('show_density'):
-                            fig.add_trace(go.Densitymapbox(
-                                lat=place_lats,
-                                lon=place_lons,
-                                z=[1]*len(place_lats),
-                                radius=25,
-                                colorscale="YlOrRd",
-                                opacity=0.45,
-                                name="Place density",
-                                showscale=False
-                            ))
 
                         # Add places markers with custom symbols
                         fig.add_trace(go.Scattermapbox(
