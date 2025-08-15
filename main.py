@@ -30,7 +30,8 @@ category_symbol = {
     "parks": "circle",    # Documented as working
     "dine": "circle",          # Very reliable 
     "education": "circle",    # Well supported
-    "worship": "circle"          # Basic symbol
+    "worship": "circle",          # Basic symbol
+    "attractions": "circle"
 }
 
 
@@ -38,7 +39,8 @@ category_color = {
     "parks": "green",
     "dine": "red",
     "education": "black",
-    "worship": "purple"
+    "worship": "purple",
+    "attractions": "orange"
 }
 
 
@@ -164,7 +166,8 @@ destination_info = {
     "parks": {"emoji": "🌲", "name": "Parks", "folder": "parks", "file": "parks.csv"},
     "education": {"emoji": "📚", "name": "Libraries", "folder": "edu", "file": "edu.csv"},
     "worship": {"emoji": "🕊️", "name": "Places of Worship", "folder": "worship", "file": "worship.csv"},
-    "dine": {"emoji": "🍽️", "name": "Restaurants", "folder": "dine", "file": "dine.csv"}
+    "dine": {"emoji": "🍽️", "name": "Restaurants", "folder": "dine", "file": "dine.csv"},
+    "attractions": {"emoji": "🎡", "name": "Attractions", "folder": "Attractions", "file": "attractions.csv"}
 }
 
 # Initialize session state
@@ -597,7 +600,8 @@ def load_all_toronto_gems():
         "parks": "green",
         "dine": "red",
         "education": "black",
-        "worship": "purple"
+        "worship": "purple",
+        "attractions": "orange"
     }
     
     # Define directory mappings with their specific column names
@@ -633,6 +637,14 @@ def load_all_toronto_gems():
             'lon_col': 'Longitude',
             'name_col': 'FTH_ORGANIZATION',
             'score_col': None  # Worship data doesn't have scores
+        },
+        'attractions': {
+            'folder': 'Attractions',
+            'file': 'attractions.csv',
+            'lat_col': 'Latitude',
+            'lon_col': 'Longitude',
+            'name_col': 'NAME',
+            'score_col': None
         }
     }
     
@@ -770,6 +782,8 @@ def load_and_display_gems(neighborhood=None, destination_type=None, user_lat=Non
             lat_col, lon_col, area_col, score_col, name_col = "Latitude", "Longitude", "area", None, "FTH_ORGANIZATION"
         elif destination_type == "dine":
             lat_col, lon_col, area_col, score_col, name_col = "Latitude", "Longitude", "area", "score", "Establishment Name"
+        elif destination_type == "attractions":
+            lat_col, lon_col, area_col, score_col, name_col = "Latitude", "Longitude", "area", None, "NAME"
 
         # ===== ENHANCED DATA CLEANING =====
         original_count = len(df)
@@ -851,6 +865,13 @@ def load_and_display_gems(neighborhood=None, destination_type=None, user_lat=Non
         elif score_col and score_col in filtered_df.columns:
             # Default to score sorting
             filtered_df = filtered_df.sort_values(score_col, ascending=False)
+        else:
+            # Fallback: sort by neighborhood area then name if available
+            if 'area' in filtered_df.columns:
+                sort_cols = ['area']
+                if name_col in filtered_df.columns:
+                    sort_cols.append(name_col)
+                filtered_df = filtered_df.sort_values(sort_cols, ascending=[True, True])
             
         current_category = destination_type
             
@@ -1125,7 +1146,8 @@ try:
                     "🌲 Parks": "parks",
                     "🍽️ Restaurants": "dine", 
                     "📚 Libraries": "education",
-                    "🕊️ Places of Worship": "worship"
+                    "🕊️ Places of Worship": "worship",
+                    "🎡 Attractions": "attractions"
                 }
                 
                 # Set current selection based on session state
@@ -1216,6 +1238,8 @@ try:
                                 lat_col, lon_col = "Latitude", "Longitude"
                             elif recommended_destination == "dine":
                                 lat_col, lon_col = "Latitude", "Longitude"
+                            elif recommended_destination == "attractions":
+                                lat_col, lon_col = "Latitude", "Longitude"
                             
                             # ✅ Safely check which columns exist before accessing them
                             available_columns = filtered_data.columns.tolist()
@@ -1235,6 +1259,9 @@ try:
                             elif 'Establishment Name' in available_columns:  # Dine
                                 display_columns.append('Establishment Name')
                                 column_mapping['Establishment Name'] = 'Name'
+                            elif 'NAME' in available_columns:  # Attractions
+                                display_columns.append('NAME')
+                                column_mapping['NAME'] = 'Name'
                             
                             # Add other available columns
                             if 'score' in available_columns:
@@ -1319,12 +1346,25 @@ try:
                             if tip and tip.get('text') and w:
                                 st.info(f"{w['weather_emoji']} {w['weather_desc']} — {tip['text']}")
                     except Exception:
-                        pass
+                        pass                    
                     
                     if not gems_df.empty:
                         # Filter by neighborhood if selected
-                        if st.session_state.selected_neighborhood and st.session_state.selected_neighborhood != "All Toronto":
-                            gems_df = gems_df[gems_df['neighborhood'] == st.session_state.selected_neighborhood]
+                        if st.session_state.selected_neighborhood and st.session_state.selected_neighborhood != "All Toronto" and 'area' in gems_df.columns:
+                            try:
+                                area_code = placeDict[st.session_state.selected_neighborhood].lower()
+                                gems_df = gems_df[gems_df['area'] == area_code]
+                            except KeyError:
+                                pass
+                        
+                        # Sort by area, then category, then name if available
+                        if 'area' in gems_df.columns:
+                            sort_cols = ['area']
+                            if 'category' in gems_df.columns:
+                                sort_cols.append('category')
+                            if 'name' in gems_df.columns:
+                                sort_cols.append('name')
+                            gems_df = gems_df.sort_values(sort_cols, ascending=[True]*len(sort_cols))
                     
                         if not gems_df.empty:
                             st.markdown(f"### 🌟 All Toronto Gems ({len(gems_df)} total)")
@@ -1524,6 +1564,8 @@ try:
                         lat_col, lon_col, name_col = "Latitude", "Longitude", "FTH_ORGANIZATION"
                     elif recommended_destination == "dine":
                         lat_col, lon_col, name_col = "Latitude", "Longitude", "Establishment Name"
+                    elif recommended_destination == "attractions":
+                        lat_col, lon_col, name_col = "Latitude", "Longitude", "NAME"
 
                     # Ensure distance is calculated BEFORE slicing data
                     if user_lat and user_lon and 'distance_km' not in filtered_data.columns:
