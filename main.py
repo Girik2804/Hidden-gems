@@ -141,6 +141,7 @@ moods = [
     {"name": "Social", "emoji": "😊", "desc": "Want to meet people", "categories": ["catering.bar", "catering.pub", "entertainment.cinema"], "recommended": "dine"},
     {"name": "Contemplative", "emoji": "🧘", "desc": "Seeking inner peace", "categories": ["religion.place_of_worship", "leisure.park", "natural.forest"], "recommended": "worship"},
     {"name": "Energetic", "emoji": "⚡", "desc": "Need outdoor activity", "categories": ["sport.fitness", "leisure.park", "sport.sports_centre"], "recommended": "parks"},
+    {"name": "Adventurous", "emoji": "🎡", "desc": "Explore attractions and iconic spots", "categories": ["tourism.attraction", "entertainment.museum", "landmark.tourist"], "recommended": "attractions"},
 ]
 
 neighborhoods = [
@@ -544,7 +545,8 @@ def get_live_places_near_user(user_lat, user_lon, place_type="cafes", mood=None,
         "Contemplative": ["religion.place_of_worship", "leisure.park", "natural.forest"],
         "Energetic": ["sport.fitness", "leisure.park", "sport.sports_centre"],
         "Intellectual": ["education.library", "entertainment.museum", "education.university"],
-        "Romantic": ["catering.restaurant", "tourism.attraction", "leisure.park"]
+        "Romantic": ["catering.restaurant", "tourism.attraction", "leisure.park"],
+        "Adventurous": ["tourism.attraction", "entertainment.museum", "landmark.tourist"]
     }
     
     # Determine categories based on mood or place_type
@@ -1729,7 +1731,8 @@ try:
                         "Hungry": "dine",
                         "Social": "dine",
                         "Contemplative": "worship",
-                        "Energetic": "parks"
+                        "Energetic": "parks",
+                        "Adventurous": "attractions"
                     }
                     current_category = mood_to_category.get(st.session_state.selected_mood, "dine")
                 else:
