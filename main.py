@@ -562,6 +562,8 @@ def get_live_places_near_user(user_lat, user_lon, place_type="cafes", mood=None,
         categories = ["education.library"]
     elif place_type == "worship":
         categories = ["religion.place_of_worship"]
+    elif place_type == "attractions":
+        categories = ["tourism.attraction", "entertainment.museum", "landmark.tourist"]
     else:
         categories = ["catering.cafe"]
     
@@ -1176,7 +1178,8 @@ try:
                     "Parks": "parks", 
                     "Restaurants": "restaurants",
                     "Libraries": "libraries",
-                    "Places of Worship": "worship"
+                    "Places of Worship": "worship",
+                    "Attractions": "attractions"
                 }
                 
                 current_place_type = "All Types"
@@ -1715,7 +1718,8 @@ try:
                         "parks": "parks",
                         "restaurants": "restaurants",
                         "libraries": "libraries", 
-                        "worship": "places of worship"
+                        "worship": "places of worship",
+                        "attractions": "attractions"
                     }
                     search_description = place_type_names.get(st.session_state.selected_place_type, "mixed")
                 
@@ -1739,7 +1743,8 @@ try:
                         "parks": "parks", 
                         "restaurants": "dine",
                         "libraries": "education",
-                        "worship": "worship"
+                        "worship": "worship",
+                        "attractions": "attractions"
                     }
                     current_category = place_type_to_category.get(st.session_state.selected_place_type, "dine")
                 
