@@ -1091,11 +1091,7 @@ try:
         # Column 1: Mood Filter
         with col1:
             st.markdown("### 🎭 Mood Filter")
-            mood_options = [
-                "None",
-                "Romantic", "Anxious", "Lonely", "Curious", 
-                "Hungry", "Social", "Contemplative", "Energetic"
-            ]
+            mood_options = ["None"] + [m["name"] for m in moods]
             
             current_mood = "None"
             if hasattr(st.session_state, 'selected_mood') and st.session_state.selected_mood:
