@@ -562,8 +562,6 @@ def get_live_places_near_user(user_lat, user_lon, place_type="cafes", mood=None,
         categories = ["education.library"]
     elif place_type == "worship":
         categories = ["religion.place_of_worship"]
-    elif place_type == "attractions":
-        categories = ["tourism.attraction", "entertainment.museum", "landmark.tourist"]
     else:
         categories = ["catering.cafe"]
     
@@ -646,11 +644,7 @@ def load_all_toronto_gems():
             'lat_col': 'Latitude',
             'lon_col': 'Longitude',
             'name_col': 'NAME',
-<<<<<<< HEAD
             'score_col': None
-=======
-            'score_col': 'score'
->>>>>>> cursor/add-and-sort-map-pins-by-neighborhood-d86f
         }
     }
     
@@ -789,11 +783,7 @@ def load_and_display_gems(neighborhood=None, destination_type=None, user_lat=Non
         elif destination_type == "dine":
             lat_col, lon_col, area_col, score_col, name_col = "Latitude", "Longitude", "area", "score", "Establishment Name"
         elif destination_type == "attractions":
-<<<<<<< HEAD
             lat_col, lon_col, area_col, score_col, name_col = "Latitude", "Longitude", "area", None, "NAME"
-=======
-            lat_col, lon_col, area_col, score_col, name_col = "Latitude", "Longitude", "area", "score", "NAME"
->>>>>>> cursor/add-and-sort-map-pins-by-neighborhood-d86f
 
         # ===== ENHANCED DATA CLEANING =====
         original_count = len(df)
@@ -1186,8 +1176,7 @@ try:
                     "Parks": "parks", 
                     "Restaurants": "restaurants",
                     "Libraries": "libraries",
-                    "Places of Worship": "worship",
-                    "Attractions": "attractions"
+                    "Places of Worship": "worship"
                 }
                 
                 current_place_type = "All Types"
@@ -1726,8 +1715,7 @@ try:
                         "parks": "parks",
                         "restaurants": "restaurants",
                         "libraries": "libraries", 
-                        "worship": "places of worship",
-                        "attractions": "attractions"
+                        "worship": "places of worship"
                     }
                     search_description = place_type_names.get(st.session_state.selected_place_type, "mixed")
                 
@@ -1751,8 +1739,7 @@ try:
                         "parks": "parks", 
                         "restaurants": "dine",
                         "libraries": "education",
-                        "worship": "worship",
-                        "attractions": "attractions"
+                        "worship": "worship"
                     }
                     current_category = place_type_to_category.get(st.session_state.selected_place_type, "dine")
                 
