@@ -644,7 +644,7 @@ def load_all_toronto_gems():
             'lat_col': 'Latitude',
             'lon_col': 'Longitude',
             'name_col': 'NAME',
-            'score_col': None
+            'score_col': 'score'
         }
     }
     
@@ -783,7 +783,7 @@ def load_and_display_gems(neighborhood=None, destination_type=None, user_lat=Non
         elif destination_type == "dine":
             lat_col, lon_col, area_col, score_col, name_col = "Latitude", "Longitude", "area", "score", "Establishment Name"
         elif destination_type == "attractions":
-            lat_col, lon_col, area_col, score_col, name_col = "Latitude", "Longitude", "area", None, "NAME"
+            lat_col, lon_col, area_col, score_col, name_col = "Latitude", "Longitude", "area", "score", "NAME"
 
         # ===== ENHANCED DATA CLEANING =====
         original_count = len(df)
