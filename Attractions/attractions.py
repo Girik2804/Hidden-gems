@@ -20,6 +20,11 @@ bounding_boxes = {
     "dundaswest": {"lat_min": 43.6500, "lat_max": 43.6590, "lon_min": -79.4420, "lon_max": -79.4300},
 }
 
+<<<<<<< HEAD
+=======
+central_areas = {"downtown", "kensington", "chinatown", "queenwest", "trinitybellwoods", "harbourfront", "waterfront", "annex", "bloor"}
+
+>>>>>>> cursor/add-and-sort-map-pins-by-neighborhood-d86f
 
 def get_area(lat, lon):
     for area, box in bounding_boxes.items():
@@ -38,6 +43,47 @@ def parse_coordinates(geometry_str):
         return None, None
 
 
+<<<<<<< HEAD
+=======
+def compute_score(row: pd.Series) -> float:
+    score = 0.3  # baseline
+
+    # Central location boost
+    area = row.get("area")
+    if isinstance(area, str) and area in central_areas:
+        score += 0.3
+
+    # Map access
+    map_access = str(row.get("MAP_ACCESS", "")).strip().upper()
+    if map_access == "Y":
+        score += 0.2
+
+    # Metadata presence
+    website = str(row.get("WEBSITE", "")).strip()
+    phone = str(row.get("PHONE", "")).strip()
+    email = str(row.get("EMAIL", "")).strip()
+    if website and website.lower() != "none":
+        score += 0.15
+    if phone and phone.lower() != "none":
+        score += 0.05
+    if email and email.lower() != "none":
+        score += 0.05
+
+    # Category weighting (light)
+    cat = str(row.get("CATEGORY", "")).strip().lower()
+    preferred = {
+        "museum", "gallery", "landmark", "attraction",
+        "performing arts", "sports / entertainment venue",
+        "garden / conservatory", "nature/ park", "transportation",
+        "convention & trade centres", "visitor information", "featured park"
+    }
+    if cat in preferred:
+        score += 0.1
+
+    return round(min(max(score, 0.0), 1.0), 3)
+
+
+>>>>>>> cursor/add-and-sort-map-pins-by-neighborhood-d86f
 def main():
     src = "Places of Interest and Attractions - 4326 (1).csv"
     df = pd.read_csv(src)
@@ -54,6 +100,12 @@ def main():
         axis=1,
     )
 
+<<<<<<< HEAD
+=======
+    # Compute score
+    df["score"] = df.apply(compute_score, axis=1)
+
+>>>>>>> cursor/add-and-sort-map-pins-by-neighborhood-d86f
     # Output
     out = "attractions.csv"
     df.to_csv(out, index=False)
